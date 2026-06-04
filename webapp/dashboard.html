@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZTA — Session Evaluation</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #0f1117;
+  color: #e2e8f0;
+  min-height: 100vh;
+}
+
+/* ── Nav ── */
+nav {
+  background: #1e2130;
+  border-bottom: 1px solid #2d3748;
+  padding: 0 24px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+}
+.nav-brand { font-size: 16px; font-weight: 700; color: #f1f5f9; display:flex; align-items:center; gap:8px; }
+.nav-right  { display: flex; align-items: center; gap: 16px; }
+.user-badge {
+  display: flex; align-items: center; gap: 8px;
+  background: #151821; border: 1px solid #2d3748;
+  border-radius: 10px; padding: 6px 12px; font-size: 13px;
+}
+.role-pill {
+  background: #1e3a5f; color: #60a5fa;
+  border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 600;
+}
+.logout-btn {
+  background: none; border: 1px solid #2d3748;
+  border-radius: 8px; padding: 6px 12px;
+  color: #94a3b8; font-size: 13px; cursor: pointer;
+}
+.logout-btn:hover { border-color: #ef4444; color: #f87171; }
+
+/* ── Layout ── */
+.container { max-width: 1100px; margin: 0 auto; padding: 28px 24px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+
+/* ── Cards ── */
+.card {
+  background: #1e2130;
+  border: 1px solid #2d3748;
+  border-radius: 14px;
+  padding: 20px 22px;
+}
+.card h2 { font-size: 15px; font-weight: 600; color: #f1f5f9; margin-bottom: 16px; }
+
+/* ── Form elements ── */
+label { display: block; font-size: 12px; font-weight: 500; color: #64748b;
+        margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em; }
+input, textarea, select {
+  width: 100%;
+  padding: 10px 13px;
+  background: #0f1117;
+  border: 1px solid #2d3748;
+  border-radius: 9px;
+  color: #f1f5f9;
+  font-size: 13px;
+  outline: none;
+  transition: border-color .2s;
+  margin-bottom: 14px;
+  font-family: inherit;
+}
+input:focus, textarea:focus, select:focus { border-color: #3b82f6; }
+textarea { resize: vertical; min-height: 70px; }
+
+/* ── Endpoint picker ── */
+.ep-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.ep-btn {
+  padding: 5px 11px; font-size: 12px; border-radius: 7px;
+  border: 1px solid #2d3748; background: #151821;
+  color: #94a3b8; cursor: pointer; font-family: monospace;
+  transition: all .15s;
+}
+.ep-btn:hover  { border-color: #3b82f6; color: #93c5fd; }
+.ep-btn.active { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; }
+.ep-btn.hp     { border-color: #7f1d1d; color: #fca5a5; }
+.ep-btn.hp.active { background: #2d1515; border-color: #ef4444; }
+
+.submit-btn {
+  width: 100%; padding: 12px;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  border: none; border-radius: 10px;
+  color: white; font-size: 15px; font-weight: 600;
+  cursor: pointer; transition: opacity .2s;
+}
+.submit-btn:hover    { opacity: 0.9; }
+.submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Result panel ── */
+.result-empty {
+  text-align: center; padding: 40px 20px;
+  color: #475569; font-size: 14px;
+}
+
+.decision-banner {
+  border-radius: 10px; padding: 14px 18px;
+  font-size: 18px; font-weight: 700;
+  text-align: center; margin-bottom: 18px;
+  letter-spacing: .02em;
+}
+.dec-maintain { background: #052e16; color: #4ade80; border: 1px solid #166534; }
+.dec-warn     { background: #1c1408; color: #fbbf24; border: 1px solid #854d0e; }
+.dec-revoke   { background: #1c0a0a; color: #f87171; border: 1px solid #991b1b; }
+.dec-critical { background: #1c0a0a; color: #ff4444; border: 2px solid #dc2626;
+                animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.7} }
+
+.score-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.score-num { font-size: 36px; font-weight: 700; }
+.score-label { font-size: 12px; color: #64748b; }
+.score-bar-bg { flex: 1; height: 8px; background: #151821; border-radius: 4px; overflow: hidden; }
+.score-bar-fill { height: 100%; border-radius: 4px; transition: width .6s ease; }
+
+.factor-row { display:flex; justify-content:space-between; align-items:center;
+              padding: 7px 0; border-bottom: 1px solid #1a1f2e; font-size: 13px; }
+.factor-row:last-child { border-bottom: none; }
+.factor-bar-wrap { width: 90px; background: #151821; border-radius: 3px; height: 5px; overflow: hidden; }
+.factor-bar-inner { height: 100%; border-radius: 3px; }
+
+.tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.tag {
+  font-size: 11px; padding: 3px 9px; border-radius: 6px;
+  background: #1e3a5f; color: #60a5fa; border: 1px solid #1e40af;
+}
+.tag.warn   { background: #1c1408; color: #fbbf24; border-color: #854d0e; }
+.tag.danger { background: #2d1515; color: #f87171; border-color: #991b1b; }
+.tag.ok     { background: #052e16; color: #4ade80; border-color: #166534; }
+
+.info-row {
+  display: flex; justify-content: space-between;
+  padding: 7px 0; border-bottom: 1px solid #1a1f2e;
+  font-size: 13px;
+}
+.info-row:last-child { border-bottom: none; }
+.info-label { color: #64748b; }
+
+.expl-box {
+  background: #151821; border: 1px solid #2d3748;
+  border-radius: 9px; padding: 12px; font-size: 13px;
+  line-height: 1.6; color: #94a3b8; margin-top: 12px;
+}
+
+/* ── Audit log table ── */
+.log-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 12px; }
+.log-table th { color: #64748b; text-align: left; padding: 6px 8px;
+                border-bottom: 1px solid #2d3748; font-weight: 500; }
+.log-table td { padding: 7px 8px; border-bottom: 1px solid #1a1f2e; }
+.log-table tr:last-child td { border-bottom: none; }
+.dec-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 5px;
+  font-size: 11px; font-weight: 600;
+}
+
+/* ── Tabs ── */
+.tabs { display: flex; gap: 4px; margin-bottom: 20px; }
+.tab-btn {
+  padding: 8px 16px; font-size: 13px;
+  background: none; border: 1px solid transparent;
+  border-radius: 9px; color: #64748b; cursor: pointer;
+}
+.tab-btn.active { background: #1e2130; border-color: #2d3748; color: #f1f5f9; }
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+/* ── Permitted intents hint ── */
+
+.clamp-warn {
+  background: #1c1408; border: 1px solid #854d0e;
+  border-radius: 8px; padding: 9px 13px;
+  font-size: 12px; color: #fbbf24; margin-bottom: 12px;
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">🔐 Intent-Aware ZTA</div>
+  <div class="nav-right">
+    <div class="user-badge">
+      <span id="nav-name">—</span>
+      <span class="role-pill" id="nav-role">—</span>
+    </div>
+    <button class="logout-btn" onclick="logout()">Sign out</button>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('evaluate')">Evaluate Session</button>
+    <button class="tab-btn" onclick="switchTab('log')">Audit Log</button>
+
+  </div>
+
+  <!-- ── Tab 1: Evaluate ── -->
+  <div class="tab-pane active" id="tab-evaluate">
+    <div class="grid-2">
+
+      <!-- Left: Input form -->
+      <div class="card">
+        <h2>Session Input</h2>
+
+<label>Declared Intent (plain English)</label>
+        <textarea id="intent" placeholder="e.g. Running monthly finance reports for Q3 audit"></textarea>
+
+        <label>Hour of Access (0–23)</label>
+        <input type="number" id="hour" min="0" max="23" value="10">
+
+        <label>Calls per Minute</label>
+        <input type="number" id="cpm" min="1" max="500" value="10">
+
+        <label>API Calls (click to select)</label>
+        <div class="ep-grid" id="ep-grid"></div>
+
+        <div style="font-size:12px;color:#64748b;margin-bottom:14px">
+          Selected: <span id="selected-count" style="color:#93c5fd">0</span> calls
+        </div>
+
+        <button class="submit-btn" id="submit-btn" onclick="submitSession()">
+          Evaluate Session
+        </button>
+      </div>
+
+      <!-- Right: Result panel -->
+      <div class="card" id="result-card">
+        <h2>Result</h2>
+        <div class="result-empty" id="result-empty">
+          Submit a session to see the evaluation.
+        </div>
+        <div id="result-content" style="display:none"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Tab 2: Audit Log ── -->
+  <div class="tab-pane" id="tab-log">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h2 style="margin:0">Audit Log</h2>
+        <button class="logout-btn" onclick="loadLog()">Refresh</button>
+      </div>
+      <div id="log-content"><div style="color:#64748b;font-size:13px">Loading…</div></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Auth guard ──────────────────────────────────────────────────────────────
+const user = JSON.parse(sessionStorage.getItem('zta_user') || 'null');
+if (!user) { window.location.href = 'index.html'; }
+
+document.getElementById('nav-name').textContent = user.name;
+document.getElementById('nav-role').textContent = user.role.replace(/_/g, ' ');
+
+function logout() {
+  sessionStorage.removeItem('zta_user');
+  window.location.href = 'index.html';
+}
+
+// ── Endpoint picker ─────────────────────────────────────────────────────────
+const HONEYPOTS = ['/shadow_export', '/root_access', '/drop_table',
+                   '/internal_bulk_transfer', '/bypass_auth', '/raw_db_dump'];
+const ALL_EPS = [
+  '/read_data', '/summary', '/reports', '/export_own',
+  '/admin', '/export_all', '/delete_user', '/billing',
+  '/logs', '/system_status', '/user_lookup', '/user_management',
+  '/shadow_export', '/root_access', '/drop_table',
+];
+let selectedEps = [];
+
+function buildEpGrid() {
+  const grid = document.getElementById('ep-grid');
+  grid.innerHTML = '';
+  ALL_EPS.forEach(ep => {
+    const btn = document.createElement('button');
+    btn.className = 'ep-btn' + (HONEYPOTS.includes(ep) ? ' hp' : '') +
+                    (selectedEps.includes(ep) ? ' active' : '');
+    btn.textContent = ep;  // no honeypot indicator — user should not know which are traps
+    btn.onclick = () => {
+      if (selectedEps.includes(ep)) {
+        selectedEps = selectedEps.filter(e => e !== ep);
+      } else {
+        selectedEps.push(ep);
+      }
+      buildEpGrid();
+      document.getElementById('selected-count').textContent = selectedEps.length;
+    };
+    grid.appendChild(btn);
+  });
+}
+buildEpGrid();
+
+// ── Submit ──────────────────────────────────────────────────────────────────
+async function submitSession() {
+  const intent = document.getElementById('intent').value.trim();
+  const hour   = parseInt(document.getElementById('hour').value);
+  const cpm    = parseFloat(document.getElementById('cpm').value);
+  const btn    = document.getElementById('submit-btn');
+
+  if (!intent) { alert('Please enter a declared intent.'); return; }
+  if (!selectedEps.length) { alert('Please select at least one API call.'); return; }
+
+  btn.disabled    = true;
+  btn.textContent = 'Evaluating…';
+
+  try {
+    const res  = await fetch('http://127.0.0.1:8000/evaluate-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id:          user.username,
+        role:             user.role,
+        declared_intent:  intent,
+        api_calls:        selectedEps,
+        hour:             hour,
+        calls_per_minute: cpm,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) { alert('Error: ' + (data.detail || 'Unknown')); return; }
+    renderResult(data);
+  } catch (e) {
+    alert('API unreachable. Is uvicorn running?');
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = 'Evaluate Session';
+  }
+}
+
+// ── Render result ────────────────────────────────────────────────────────────
+function renderResult(d) {
+  document.getElementById('result-empty').style.display   = 'none';
+  document.getElementById('result-content').style.display = 'block';
+
+  const dec     = d.final_decision;
+  const score   = d.deviation_score;
+  const isHP    = d.honeypot_triggered;
+  const clamped = d.intent_clamped;
+
+  const decClass = {
+    MAINTAIN: 'dec-maintain', WARN: 'dec-warn', REVOKE: 'dec-revoke'
+  }[dec] || 'dec-revoke';
+  const decIcon  = { MAINTAIN:'✅', WARN:'⚠️', REVOKE:'🚫' }[dec] || '🚫';
+  const riskColor = { LOW:'#4ade80', MEDIUM:'#fbbf24', HIGH:'#f87171', CRITICAL:'#ff4444' };
+  const barColor  = score < 0.3 ? '#4ade80' : score < 0.65 ? '#fbbf24' : '#f87171';
+
+  const factors = d.factors || {};
+  const fRows = Object.entries(factors).map(([k, v]) => `
+    <div class="factor-row">
+      <span style="color:#94a3b8">${k.replace(/_/g,' ')}</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="factor-bar-wrap">
+          <div class="factor-bar-inner" style="width:${Math.round(v*100)}%;background:${barColor}"></div>
+        </div>
+        <span style="font-size:12px;min-width:32px;text-align:right">${v.toFixed(2)}</span>
+      </div>
+    </div>`).join('');
+
+  const signals = (d.triggered_signals || []).map(s => {
+    const cls = s.includes('no_anomaly') ? 'ok'
+              : s.includes('honeypot') || s.includes('forbidden') || s.includes('revoke') ? 'danger'
+              : 'warn';
+    return `<span class="tag ${cls}">${s.replace(/_/g,' ')}</span>`;
+  }).join('');
+
+  const flags = (d.rule_flags || []).slice(0,6).map(f =>
+    `<div style="font-size:12px;color:#fbbf24;padding:3px 0;border-bottom:1px solid #1a1f2e">${f}</div>`
+  ).join('');
+
+  const clampWarn = clamped ? `
+    <div class="clamp-warn">
+      ⚠ Intent clamped: your role (${d.role}) is not permitted to declare
+      "${d.declared_intent.substring(0,60)}". Evaluated as
+      <strong>${d.intent_category.replace(/_/g,' ')}</strong>.
+    </div>` : '';
+
+  document.getElementById('result-content').innerHTML = `
+    <div class="decision-banner ${isHP ? 'dec-critical' : decClass}">
+      ${decIcon} ${isHP ? '🍯 HONEYPOT — ' : ''}${dec}
+      <span style="font-size:13px;font-weight:400;margin-left:8px">${d.risk_level} RISK</span>
+    </div>
+
+    ${clampWarn}
+
+    <div class="score-row">
+      <div>
+        <div class="score-num" style="color:${barColor}">${score.toFixed(3)}</div>
+        <div class="score-label">Deviation Score</div>
+      </div>
+      <div class="score-bar-bg">
+        <div class="score-bar-fill" style="width:${Math.round(score*100)}%;background:${barColor}"></div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;color:#64748b;margin-bottom:8px;font-weight:500">Factor Breakdown</div>
+      ${fRows || '<div style="color:#64748b;font-size:12px">N/A</div>'}
+    </div>
+
+    <div class="info-row"><span class="info-label">Intent resolved as</span>
+      <span>${d.intent_category.replace(/_/g,' ')}</span></div>
+    <div class="info-row"><span class="info-label">Confidence</span>
+      <span style="color:${d.low_confidence?'#fbbf24':'#4ade80'}">${(d.intent_confidence*100).toFixed(0)}%${d.low_confidence?' ⚠':''}</span></div>
+    <div class="info-row"><span class="info-label">Outside scope</span>
+      <span style="color:${(d.outside_calls||[]).length?'#f87171':'#4ade80'}">${(d.outside_calls||[]).length} calls</span></div>
+    <div class="info-row"><span class="info-label">Forbidden hits</span>
+      <span style="color:${(d.forbidden_hits||[]).length?'#f87171':'#4ade80'}">${(d.forbidden_hits||[]).length} calls</span></div>
+    <div class="info-row"><span class="info-label">Rule flags</span>
+      <span style="color:${(d.rule_flags||[]).length?'#fbbf24':'#4ade80'}">${(d.rule_flags||[]).length}</span></div>
+
+    ${flags ? `<div style="margin:10px 0">${flags}</div>` : ''}
+
+    <div class="tag-list">${signals}</div>
+
+    <div class="expl-box">${d.explanation}</div>
+  `;
+}
+
+// ── Tab switching ────────────────────────────────────────────────────────────
+function switchTab(id) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => {
+    b.classList.toggle('active', ['evaluate','log'][i] === id);
+  });
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  if (id === 'log') loadLog();
+}
+
+// ── Audit Log ────────────────────────────────────────────────────────────────
+async function loadLog() {
+  const el = document.getElementById('log-content');
+  try {
+    const res  = await fetch('http://127.0.0.1:8000/audit-log?limit=30');
+    const data = await res.json();
+    if (!data.sessions.length) {
+      el.innerHTML = '<div style="color:#64748b;font-size:13px">No sessions yet.</div>';
+      return;
+    }
+    const decColor = { MAINTAIN:'#4ade80', WARN:'#fbbf24', REVOKE:'#f87171' };
+    const rows = data.sessions.map(s => `
+      <tr>
+        <td>${s.user_id}</td>
+        <td>${(s.role||'').replace(/_/g,' ')}</td>
+        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.declared_intent}</td>
+        <td>${s.deviation_score?.toFixed(3)??'—'}</td>
+        <td><span class="dec-badge" style="background:${decColor[s.decision]||'#64748b'}22;color:${decColor[s.decision]||'#64748b'};border:1px solid ${decColor[s.decision]||'#64748b'}44">${s.decision}</span></td>
+        <td>${s.risk_level||'—'}</td>
+        <td style="color:#475569">${s.timestamp?.substring(0,16)||'—'}</td>
+      </tr>`).join('');
+    el.innerHTML = `
+      <table class="log-table">
+        <thead><tr>
+          <th>User</th><th>Role</th><th>Intent</th>
+          <th>Score</th><th>Decision</th><th>Risk</th><th>Time</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  } catch(e) {
+    el.innerHTML = '<div style="color:#f87171;font-size:13px">API unreachable.</div>';
+  }
+}
+
+</script>
+</body>
+</html>

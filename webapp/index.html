@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZTA — Login</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0f1117;
+    color: #e2e8f0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .login-wrap {
+    width: 100%;
+    max-width: 420px;
+    padding: 24px;
+  }
+
+  .logo {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .logo-icon {
+    width: 56px; height: 56px;
+    background: linear-gradient(135deg, #3b82f6, #6366f1);
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    margin-bottom: 12px;
+  }
+  .logo h1 { font-size: 22px; font-weight: 700; color: #f1f5f9; }
+  .logo p  { font-size: 13px; color: #64748b; margin-top: 4px; }
+
+  .card {
+    background: #1e2130;
+    border: 1px solid #2d3748;
+    border-radius: 16px;
+    padding: 32px;
+  }
+
+  .form-group { margin-bottom: 18px; }
+  label { display: block; font-size: 13px; font-weight: 500;
+          color: #94a3b8; margin-bottom: 6px; }
+  input {
+    width: 100%;
+    padding: 11px 14px;
+    background: #0f1117;
+    border: 1px solid #2d3748;
+    border-radius: 10px;
+    color: #f1f5f9;
+    font-size: 14px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  input:focus { border-color: #3b82f6; }
+
+  .btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #3b82f6, #6366f1);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: opacity .2s;
+  }
+  .btn:hover { opacity: 0.9; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .error {
+    background: #2d1515;
+    border: 1px solid #7f1d1d;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #fca5a5;
+    margin-top: 14px;
+    display: none;
+  }
+
+  .demo-users {
+    margin-top: 24px;
+    background: #151821;
+    border: 1px solid #2d3748;
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .demo-users h3 { font-size: 12px; color: #64748b; font-weight: 600;
+                   text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
+  .user-chip {
+    display: inline-block;
+    background: #1e2130;
+    border: 1px solid #2d3748;
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 12px;
+    margin: 3px;
+    cursor: pointer;
+    transition: border-color .15s;
+  }
+  .user-chip:hover { border-color: #3b82f6; color: #93c5fd; }
+  .user-chip .role-tag {
+    font-size: 10px;
+    color: #64748b;
+    margin-left: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="login-wrap">
+  <div class="logo">
+    <div class="logo-icon">🔐</div>
+    <h1>Intent-Aware ZTA</h1>
+    <p>Zero Trust Architecture · M.Tech Cybersecurity</p>
+  </div>
+
+  <div class="card">
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="username" placeholder="e.g. alice" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="password" placeholder="pass123" autocomplete="current-password">
+    </div>
+    <button class="btn" id="login-btn" onclick="doLogin()">Sign In</button>
+    <div class="error" id="error-box"></div>
+  </div>
+
+  <div class="demo-users">
+    <h3>Demo accounts (all password: pass123)</h3>
+    <div id="chips"></div>
+  </div>
+</div>
+
+<script>
+const DEMO_USERS = [
+  { u:"alice",    r:"junior analyst" },
+  { u:"bob",      r:"IT admin" },
+  { u:"carol",    r:"security analyst" },
+  { u:"dave",     r:"finance staff" },
+  { u:"eve",      r:"compliance officer" },
+  { u:"frank",    r:"executive" },
+  { u:"grace",    r:"HR staff" },
+  { u:"attacker", r:"stolen creds" },
+];
+
+const chips = document.getElementById('chips');
+DEMO_USERS.forEach(u => {
+  const el = document.createElement('span');
+  el.className = 'user-chip';
+  el.innerHTML = `${u.u} <span class="role-tag">${u.r}</span>`;
+  el.onclick = () => {
+    document.getElementById('username').value = u.u;
+    document.getElementById('password').value = u.u === 'attacker' ? 'hacked1' : 'pass123';
+  };
+  chips.appendChild(el);
+});
+
+document.getElementById('password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+async function doLogin() {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value.trim();
+  const btn      = document.getElementById('login-btn');
+  const errBox   = document.getElementById('error-box');
+
+  if (!username || !password) {
+    showError('Please enter username and password.');
+    return;
+  }
+
+  btn.disabled   = true;
+  btn.textContent = 'Signing in…';
+  errBox.style.display = 'none';
+
+  try {
+    const res  = await fetch('http://127.0.0.1:8000/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      showError(data.detail || 'Login failed.');
+      return;
+    }
+
+    // Store session
+    sessionStorage.setItem('zta_user', JSON.stringify(data));
+    window.location.href = 'dashboard.html';
+
+  } catch (err) {
+    showError('Cannot reach API. Make sure uvicorn is running on port 8000.');
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = 'Sign In';
+  }
+}
+
+function showError(msg) {
+  const e = document.getElementById('error-box');
+  e.textContent    = msg;
+  e.style.display  = 'block';
+}
+</script>
+</body>
+</html>
